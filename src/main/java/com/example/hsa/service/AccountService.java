@@ -22,11 +22,7 @@ public class AccountService {
     @Transactional
     public Account create(String holderName, String email, LocalDate dateOfBirth) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-        // Friendly pre-check. The unique constraint is what actually guarantees uniqueness
-        // (a concurrent duplicate is caught and mapped to 409 in the resource).
-        if (Account.count("email", normalizedEmail) > 0) {
-            throw ApiException.conflict("EMAIL_TAKEN", "An account with that email already exists");
-        }
+        // Uniqueness is enforced by the uq_account_email index; a duplicate becomes a 409 in ErrorMappers.
         Account a = new Account();
         a.holderName = holderName.trim();
         a.email = normalizedEmail;

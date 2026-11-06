@@ -20,16 +20,13 @@ public class CardService {
     /**
      * Issues a virtual card. Only the last four digits exist anywhere: no full card number is
      * generated or stored, since nothing in this system needs one (purchases reference the card id).
-     * At most one ACTIVE card per account; the database enforces this with a unique index too.
+     * At most one ACTIVE card per account: enforced by the uq_card_one_active_per_account index,
+     * which ErrorMappers turns into a 409.
      */
     @Transactional
     public Card issue(long accountId) {
         if (Account.findById(accountId) == null) {
             throw ApiException.notFound("Account", accountId);
-        }
-        if (Card.activeForAccount(accountId).isPresent()) {
-            throw ApiException.conflict("CARD_ALREADY_ACTIVE",
-                    "Account already has an active card; freeze it before issuing a new one");
         }
         Card c = new Card();
         c.accountId = accountId;
@@ -53,10 +50,6 @@ public class CardService {
         Card c = Card.findById(cardId);
         if (c == null) {
             throw ApiException.notFound("Card", cardId);
-        }
-        if (status == CardStatus.ACTIVE && c.status != CardStatus.ACTIVE
-                && Card.activeForAccount(c.accountId).isPresent()) {
-            throw ApiException.conflict("CARD_ALREADY_ACTIVE", "Account already has another active card");
         }
         c.status = status;
         c.persistAndFlush();

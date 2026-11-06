@@ -15,8 +15,4 @@ public class ApiException extends RuntimeException {
     public static ApiException notFound(String what, long id) {
         return new ApiException(404, "NOT_FOUND", what + " " + id + " not found");
     }
-
-    public static ApiException conflict(String code, String message) {
-        return new ApiException(409, code, message);
-    }
 }
