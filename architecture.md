@@ -116,8 +116,16 @@ card with `FOR SHARE`. Concurrent purchases on one card share that lock and don'
 but a freeze (an exclusive lock on the card row) waits for in-flight purchases to commit, and a
 purchase that arrives during an uncommitted freeze waits for it and then sees `FROZEN`.
 
-Lock order is always card, then account. Freeze locks only the card, and deposits lock only the
-account, so no path takes the two locks in the opposite order.
+Lock ordering. A purchase takes a shared lock on the card, then an exclusive lock
+on the account (the debit). Inserting its `hsa_transaction` row also takes shared locks on the parent
+account and card rows (foreign-key checks), which it already holds. Freeze and unfreeze take an
+exclusive lock on the card only; deposits take an exclusive lock on the account only. Card issue takes a
+shared lock on the account (the card's foreign key) and, for the one-active-card check, a shared lock on
+the card index entry. That is account before card, but both locks are shared and the only exclusive card
+locks (freeze, unfreeze) never touch an account, so none of these paths can wait on each other in a
+cycle. If InnoDB ever did detect a deadlock (for example in an edge case of concurrent duplicate-key
+inserts), it would roll one transaction back, and the request would fail with a 500 rather than corrupt
+data.
 
 ### Other uniqueness rules
 
