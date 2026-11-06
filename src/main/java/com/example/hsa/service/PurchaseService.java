@@ -12,9 +12,9 @@ import jakarta.inject.Inject;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 
 /**
  * Authorizes a card purchase. Order of checks:
@@ -34,6 +34,9 @@ public class PurchaseService {
 
     @Inject
     QualifiedExpensePolicy policy;
+
+    @Inject
+    Clock clock;
 
     /** Public on purpose: Quarkus only applies @Transactional to non-private methods called through the bean. */
     @Transactional
@@ -55,10 +58,10 @@ public class PurchaseService {
         tx.amountCents = amountCents;
         tx.merchantName = merchantName;
         tx.merchantCategory = category;
-        tx.createdAt = Instant.now();
+        tx.createdAt = Instant.now(clock);
 
         DeclineReason decline;
-        if (!card.isUsableOn(LocalDate.now(ZoneOffset.UTC))) {
+        if (!card.isUsableOn(LocalDate.now(clock))) {
             decline = DeclineReason.CARD_INACTIVE;
         } else if (!policy.isQualified(category)) {
             decline = DeclineReason.NOT_QUALIFIED;

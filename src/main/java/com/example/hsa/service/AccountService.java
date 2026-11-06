@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,6 +20,9 @@ public class AccountService {
     @Inject
     LedgerRepository ledger;
 
+    @Inject
+    Clock clock;
+
     @Transactional
     public Account create(String holderName, String email, LocalDate dateOfBirth) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
@@ -28,7 +32,7 @@ public class AccountService {
         a.email = normalizedEmail;
         a.dateOfBirth = dateOfBirth;
         a.balanceCents = 0;
-        a.createdAt = Instant.now();
+        a.createdAt = Instant.now(clock);
         a.persistAndFlush();
         return a;
     }
@@ -52,7 +56,7 @@ public class AccountService {
         tx.type = TransactionType.DEPOSIT;
         tx.amountCents = amountCents;
         tx.status = TransactionStatus.APPROVED;
-        tx.createdAt = Instant.now();
+        tx.createdAt = Instant.now(clock);
         tx.persistAndFlush();
         return new TxResult(tx, ledger.balanceOf(accountId));
     }

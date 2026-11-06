@@ -4,18 +4,22 @@ import com.example.hsa.domain.Account;
 import com.example.hsa.domain.Card;
 import com.example.hsa.domain.CardStatus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
 import java.util.List;
 
 @ApplicationScoped
 public class CardService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    @Inject
+    Clock clock;
 
     /**
      * Issues a virtual card. Only the last four digits exist anywhere: no full card number is
@@ -31,9 +35,9 @@ public class CardService {
         Card c = new Card();
         c.accountId = accountId;
         c.last4 = String.format("%04d", RANDOM.nextInt(10_000));
-        c.expiry = YearMonth.now(ZoneOffset.UTC).plusYears(3).atEndOfMonth();
+        c.expiry = YearMonth.now(clock).plusYears(3).atEndOfMonth();
         c.status = CardStatus.ACTIVE;
-        c.createdAt = Instant.now();
+        c.createdAt = Instant.now(clock);
         c.persistAndFlush();
         return c;
     }

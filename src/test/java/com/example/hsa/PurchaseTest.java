@@ -2,10 +2,15 @@ package com.example.hsa;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
@@ -14,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
 class PurchaseTest {
+
+    @Inject
+    TestClock clock;
 
     @ParameterizedTest
     @ValueSource(strings = {"PHARMACY", "HOSPITAL"})
@@ -63,6 +71,28 @@ class PurchaseTest {
 
         given().post("/api/cards/{id}/unfreeze", ac[1]).then().statusCode(200);
         Api.purchase(ac[1], 1_000, "PHARMACY").statusCode(201).body("transaction.status", equalTo("APPROVED"));
+    }
+
+    /** A card works through the last day of its expiry month and is CARD_INACTIVE from the next day. */
+    @Test
+    void expiredCardIsDeclinedAsCardInactive() {
+        long[] ac = Api.fundedAccountWithCard(10_000);
+        String expiry = given().get("/api/accounts/{id}/cards", ac[0])
+                .then().statusCode(200).extract().jsonPath().getString("[0].expiry"); // "MM/yy"
+        LocalDate lastValidDay = YearMonth.parse(expiry, DateTimeFormatter.ofPattern("MM/yy")).atEndOfMonth();
+        try {
+            clock.setTo(lastValidDay.atTime(23, 59).toInstant(ZoneOffset.UTC));
+            Api.purchase(ac[1], 1_000, "PHARMACY").statusCode(201)
+                    .body("transaction.status", equalTo("APPROVED"));
+
+            clock.setTo(lastValidDay.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+            Api.purchase(ac[1], 1_000, "PHARMACY").statusCode(201)
+                    .body("transaction.status", equalTo("DECLINED"))
+                    .body("transaction.declineReason", equalTo("CARD_INACTIVE"));
+        } finally {
+            clock.reset();
+        }
+        assertEquals(9_000, Api.balance(ac[0]));
     }
 
     @Test
