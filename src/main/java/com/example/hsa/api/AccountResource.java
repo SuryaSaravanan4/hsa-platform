@@ -68,6 +68,7 @@ public class AccountResource {
     }
 
     @POST
+    @Consumes(MediaType.WILDCARD) // no request body
     @Path("/{id}/cards")
     public Response issueCard(@PathParam("id") long id) {
         return Response.status(Response.Status.CREATED).entity(CardResponse.of(cards.issue(id))).build();

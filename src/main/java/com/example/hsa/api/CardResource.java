@@ -28,12 +28,14 @@ public class CardResource {
     PurchaseService purchases;
 
     @POST
+    @Consumes(MediaType.WILDCARD) // no request body
     @Path("/{id}/freeze")
     public CardResponse freeze(@PathParam("id") long id) {
         return CardResponse.of(cards.setStatus(id, CardStatus.FROZEN));
     }
 
     @POST
+    @Consumes(MediaType.WILDCARD) // no request body
     @Path("/{id}/unfreeze")
     public CardResponse unfreeze(@PathParam("id") long id) {
         return CardResponse.of(cards.setStatus(id, CardStatus.ACTIVE));
