@@ -8,6 +8,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
+import java.util.Locale;
 import java.util.Map;
 
 /** Turns business errors and unique-constraint violations into JSON {code, message} responses. */
@@ -42,7 +43,7 @@ public class ErrorMappers {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof ConstraintViolationException cve && cve.getConstraintName() != null) {
                 String name = cve.getConstraintName();
-                return name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+                return name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
             }
         }
         return null;
