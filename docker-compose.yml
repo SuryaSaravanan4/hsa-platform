@@ -1,0 +1,21 @@
+# MySQL for running the packaged app (prod profile). Dev mode and tests don't need this:
+# Quarkus Dev Services starts its own throwaway MySQL container automatically.
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: hsa
+      MYSQL_USER: hsa
+      MYSQL_PASSWORD: hsa
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - hsa-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uhsa", "-phsa"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  hsa-mysql-data:
