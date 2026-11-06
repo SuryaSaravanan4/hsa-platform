@@ -51,7 +51,9 @@ public class PurchaseService {
 
         // Shared lock (SELECT ... FOR SHARE): concurrent purchases on the same card don't block
         // each other here, but a concurrent freeze waits until this purchase commits, so a card
-        // can't be frozen "in the middle" of an authorization.
+        // can't be frozen "in the middle" of an authorization. A purchase arriving during an
+        // uncommitted freeze waits for it and then sees FROZEN; a plain read would see the old
+        // ACTIVE row and approve. Proven by RaceConditionTest.purchaseWaitsForInFlightFreezeAndIsDeclined.
         Card card = Card.findById(cardId, LockModeType.PESSIMISTIC_READ);
         if (card == null) {
             throw ApiException.notFound("Card", cardId);
