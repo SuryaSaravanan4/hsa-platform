@@ -11,6 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
+import org.jboss.logging.Logger;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -28,6 +29,8 @@ import java.time.LocalDate;
  */
 @ApplicationScoped
 public class PurchaseService {
+
+    private static final Logger LOG = Logger.getLogger(PurchaseService.class);
 
     @Inject
     LedgerRepository ledger;
@@ -74,6 +77,9 @@ public class PurchaseService {
         tx.status = decline == null ? TransactionStatus.APPROVED : TransactionStatus.DECLINED;
         tx.declineReason = decline;
         tx.persistAndFlush();
+        // One key=value line per decision, so declines can be searched and counted in the logs.
+        LOG.infof("purchase_decision txId=%d cardId=%d accountId=%d amountCents=%d category=%s outcome=%s declineReason=%s",
+                tx.id, card.id, card.accountId, amountCents, category, tx.status, decline);
         return new TxResult(tx, ledger.balanceOf(card.accountId));
     }
 }
