@@ -65,7 +65,7 @@ edited, so Flyway would reject the old schema's checksum.
 ```
 
 70 tests run over HTTP against a real MySQL container (Dev Services), including the concurrency tests in
-`ConcurrentPurchaseTest` and `RaceConditionTest`. Docker must be running. A full run takes 1 to 2 minutes.
+`ConcurrentPurchaseTest` and `RaceConditionTest`. Docker must be running. A full run takes about 2 minutes.
 
 ## Demo: concurrent purchases
 
