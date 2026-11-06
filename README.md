@@ -54,7 +54,9 @@ java -jar target/quarkus-app/quarkus-run.jar
 
 This uses the MySQL in `docker-compose.yml` (`localhost:3306`, database/user/password `hsa`). Override it
 with the `HSA_DB_URL`, `HSA_DB_USER` and `HSA_DB_PASSWORD` environment variables. Stop it with
-`docker compose down` (add `-v` to delete the data).
+`docker compose down` (add `-v` to delete the data). If you ran an earlier build of this project
+against the same compose volume, run `docker compose down -v` once: the unreleased V1 migration was
+edited, so Flyway would reject the old schema's checksum.
 
 ## Run the tests
 
@@ -62,7 +64,7 @@ with the `HSA_DB_URL`, `HSA_DB_USER` and `HSA_DB_PASSWORD` environment variables
 ./mvnw test
 ```
 
-76 tests run over HTTP against a real MySQL container (Dev Services), including the concurrency tests in
+70 tests run over HTTP against a real MySQL container (Dev Services), including the concurrency tests in
 `ConcurrentPurchaseTest` and `RaceConditionTest`. Docker must be running. A full run takes 1 to 2 minutes.
 
 ## Demo: concurrent purchases
@@ -92,18 +94,25 @@ All amounts are integer cents. Errors are JSON `{"code": "...", "message": "..."
 | POST | `/api/accounts` | `{holderName, email, dateOfBirth}` | 201 |
 | GET | `/api/accounts` | | 200 |
 | GET | `/api/accounts/{id}` | | 200 |
-| POST | `/api/accounts/{id}/deposits` | `{amountCents}` | 201 (200 on idempotent replay) |
+| POST | `/api/accounts/{id}/deposits` | `{amountCents}` | 201 |
 | POST | `/api/accounts/{id}/cards` | none | 201 |
 | GET | `/api/accounts/{id}/cards` | | 200 |
 | GET | `/api/accounts/{id}/transactions` | | 200 |
 | POST | `/api/cards/{id}/freeze` | none | 200 |
 | POST | `/api/cards/{id}/unfreeze` | none | 200 |
-| POST | `/api/cards/{id}/purchases` | `{amountCents, merchantName, merchantCategory}` | 201 (200 on idempotent replay) |
+| POST | `/api/cards/{id}/purchases` | `{amountCents, merchantName, merchantCategory}` | 201 |
 | GET | `/api/categories` | | 200 |
 
-Deposits and purchases accept an optional `Idempotency-Key` header. A declined purchase is still a
-recorded transaction, so it returns 201 with `"status": "DECLINED"` and a `declineReason`
-(`CARD_INACTIVE`, `NOT_QUALIFIED` or `INSUFFICIENT_FUNDS`).
+A declined purchase is still a recorded transaction, so it returns 201 with `"status": "DECLINED"` and a
+`declineReason` (`CARD_INACTIVE`, `NOT_QUALIFIED` or `INSUFFICIENT_FUNDS`). Invalid input returns 400,
+unknown ids 404 (`NOT_FOUND`), a duplicate email 409 (`EMAIL_TAKEN`), and issuing or unfreezing a second
+active card 409 (`CARD_ALREADY_ACTIVE`).
+
+Every purchase decision is logged as one `key=value` line, for example:
+
+```
+purchase_decision txId=25 cardId=5 accountId=9 amountCents=5000 category=PHARMACY outcome=DECLINED declineReason=INSUFFICIENT_FUNDS
+```
 
 Merchant categories: `PHARMACY`, `HOSPITAL`, `DOCTOR`, `DENTAL`, `VISION` (qualified) and `RESTAURANT`,
 `ELECTRONICS`, `GROCERY`, `CLOTHING` (not qualified).

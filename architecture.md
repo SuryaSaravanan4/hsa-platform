@@ -51,9 +51,9 @@ account 1 ──< card
 
 | Table | Columns | Notes |
 |---|---|---|
-| `account` | `id`, `holder_name`, `email` (unique), `date_of_birth`, `balance_cents`, `created_at` | `balance_cents` is a cached running total so a debit can be one atomic `UPDATE`. `CHECK (balance_cents >= 0)` is a safety net. |
+| `account` | `id`, `holder_name`, `email` (unique), `date_of_birth`, `balance_cents`, `created_at` | `balance_cents` is a cached running total so a debit can be one atomic `UPDATE`. `CHECK (balance_cents >= 0)` is a safety net, and the entity maps it `updatable = false` so Hibernate can never write a stale balance back. |
 | `card` | `id`, `account_id`, `last4`, `expiry`, `status` (`ACTIVE`/`FROZEN`), `created_at`, generated `active_account_id` | Only the last four digits exist. "One active card per account" is a unique index on a stored generated column that equals `account_id` when `ACTIVE` and `NULL` otherwise (MySQL has no partial indexes). |
-| `hsa_transaction` | `id`, `account_id`, `card_id` (null for deposits), `type` (`DEPOSIT`/`PURCHASE`), `amount_cents`, `merchant_name`, `merchant_category`, `status` (`APPROVED`/`DECLINED`), `decline_reason`, `idempotency_key` (unique, nullable), `created_at` | Audit trail of every attempt, including declines. Named `hsa_transaction` because `TRANSACTION` is a MySQL keyword. A `CHECK` ties `decline_reason` to `status`. |
+| `hsa_transaction` | `id`, `account_id`, `card_id` (null for deposits), `type` (`DEPOSIT`/`PURCHASE`), `amount_cents`, `merchant_name`, `merchant_category`, `status` (`APPROVED`/`DECLINED`), `decline_reason`, `created_at` | Audit trail of every attempt, including declines. Named `hsa_transaction` because `TRANSACTION` is a MySQL keyword. A `CHECK` ties `decline_reason` to `status`. |
 
 Entities reference each other by id (`Card.accountId`, `HsaTransaction.cardId`) rather than with
 `@ManyToOne`. That keeps every query explicit and avoids lazy-loading surprises. Foreign keys are
@@ -64,27 +64,26 @@ purchases equals `balance_cents`.
 
 ## Request flow: a card purchase
 
-`POST /api/cards/{id}/purchases` with `{amountCents, merchantName, merchantCategory}` and an optional
-`Idempotency-Key` header.
+`POST /api/cards/{id}/purchases` with `{amountCents, merchantName, merchantCategory}`.
 
 1. `CardResource.purchase` validates the body (amount 1 to 100,000,000 cents, merchant name present,
    known category). Bad input returns 400 before any database work.
 2. `PurchaseService.purchase` runs in one database transaction (`@Transactional` on a public method):
-   1. If an idempotency key is given and already exists, return the stored transaction (HTTP 200,
-      `replayed: true`). The same key with a different amount or card returns 409.
-   2. Load the card with `SELECT ... FOR SHARE` (`LockModeType.PESSIMISTIC_READ`). Unknown card
+   1. Load the card with `SELECT ... FOR SHARE` (`LockModeType.PESSIMISTIC_READ`). Unknown card
       returns 404.
-   3. Card not `ACTIVE`, or past its expiry: decline `CARD_INACTIVE`.
-   4. `QualifiedExpensePolicy.isQualified(category)` is false: decline `NOT_QUALIFIED`.
-   5. `LedgerRepository.tryDebit(accountId, amount)` returns false: decline `INSUFFICIENT_FUNDS`.
-   6. Otherwise approve.
-   7. Insert one `hsa_transaction` row with the outcome, then commit. The debit and the row commit
-      or roll back together.
+   2. Card not `ACTIVE`, or past its expiry (today's date comes from an injected `java.time.Clock`):
+      decline `CARD_INACTIVE`.
+   3. `QualifiedExpensePolicy.isQualified(category)` is false: decline `NOT_QUALIFIED`.
+   4. `LedgerRepository.tryDebit(accountId, amount)` returns false: decline `INSUFFICIENT_FUNDS`.
+   5. Otherwise approve.
+   6. Insert one `hsa_transaction` row with the outcome and log one `purchase_decision` line
+      (`txId`, `cardId`, `accountId`, `amountCents`, `category`, `outcome`, `declineReason`), then
+      commit. The debit and the row commit or roll back together.
 3. The response is HTTP 201 with the transaction and `balanceAfterCents`, approved or declined. A
    decline is a normal business outcome, so it is not an HTTP error.
 
-Deposits (`AccountService.deposit`) follow the same shape: optional idempotency check, an atomic
-`LedgerRepository.credit`, and one `DEPOSIT` row in the same transaction.
+Deposits (`AccountService.deposit`) follow the same shape: an atomic `LedgerRepository.credit` and
+one `DEPOSIT` row in the same transaction.
 
 ## Concurrency
 
@@ -120,12 +119,12 @@ purchase that arrives during an uncommitted freeze waits for it and then sees `F
 Lock order is always card, then account. Freeze locks only the card, and deposits lock only the
 account, so no path takes the two locks in the opposite order.
 
-### Idempotency races
+### Other uniqueness rules
 
-`idempotency_key` has a unique index. If two requests with the same new key race, both pass the
-lookup, but the second insert violates the index. Its whole transaction rolls back, including its
-debit, and `CardResource.purchase` (or `AccountResource.deposit`) retries once. The retry finds the
-committed row and replays it.
+A unique email and "one active card per account" are enforced only by unique indexes
+(`uq_account_email`, `uq_card_one_active_per_account`). There is no check-then-insert in Java, which
+would race. `ErrorMappers` reads Hibernate's `ConstraintViolationException.getConstraintName()` and
+maps those two names to 409 `EMAIL_TAKEN` and `CARD_ALREADY_ACTIVE`; any other database error is a 500.
 
 ### Alternatives considered
 
@@ -147,8 +146,8 @@ committed row and replays it.
     overspend and that every declined amount is larger than the final balance.
   - Deposit races, and deposits racing purchases.
   - Each test also checks that the ledger sum equals the cached balance and that every attempt has a row.
-- `RaceConditionTest` covers a purchase during an uncommitted freeze, and 10 requests with the same
-  idempotency key.
+- `RaceConditionTest` covers a purchase arriving during an uncommitted freeze (it must wait, then be
+  declined `CARD_INACTIVE`).
 - Mutation checks: with `tryDebit` replaced by a naive read-check-write, 45 of the 46 tests in
   `ConcurrentPurchaseTest` failed. With the `FOR SHARE` lock removed, the freeze test failed 3 of 3
   times. Both changes were reverted.
@@ -172,6 +171,9 @@ committed row and replays it.
   build step.
 
 ## Out of scope
+
+- Idempotency keys for retried requests (a natural next step: a key unique per account, returning
+  the stored result on replay).
 
 - Authentication and authorization (any caller can act on any account).
 - IRS annual contribution limits, catch-up contributions, and age rules.
