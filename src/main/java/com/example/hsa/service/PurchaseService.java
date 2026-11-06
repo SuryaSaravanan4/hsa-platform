@@ -15,7 +15,6 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Optional;
 
 /**
  * Authorizes a card purchase. Order of checks:
@@ -38,17 +37,7 @@ public class PurchaseService {
 
     /** Public on purpose: Quarkus only applies @Transactional to non-private methods called through the bean. */
     @Transactional
-    public TxResult purchase(long cardId, long amountCents, String merchantName,
-                             MerchantCategory category, String idempotencyKey) {
-        if (idempotencyKey != null) {
-            Optional<HsaTransaction> existing = HsaTransaction.byIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                HsaTransaction prior = existing.get();
-                Idempotency.requireSameRequest(prior, prior.accountId, cardId, amountCents);
-                return TxResult.replay(prior, ledger.balanceOf(prior.accountId));
-            }
-        }
-
+    public TxResult purchase(long cardId, long amountCents, String merchantName, MerchantCategory category) {
         // Shared lock (SELECT ... FOR SHARE): concurrent purchases on the same card don't block
         // each other here, but a concurrent freeze waits until this purchase commits, so a card
         // can't be frozen "in the middle" of an authorization. A purchase arriving during an
@@ -66,7 +55,6 @@ public class PurchaseService {
         tx.amountCents = amountCents;
         tx.merchantName = merchantName;
         tx.merchantCategory = category;
-        tx.idempotencyKey = idempotencyKey;
         tx.createdAt = Instant.now();
 
         DeclineReason decline;
@@ -83,6 +71,6 @@ public class PurchaseService {
         tx.status = decline == null ? TransactionStatus.APPROVED : TransactionStatus.DECLINED;
         tx.declineReason = decline;
         tx.persistAndFlush();
-        return TxResult.fresh(tx, ledger.balanceOf(card.accountId));
+        return new TxResult(tx, ledger.balanceOf(card.accountId));
     }
 }

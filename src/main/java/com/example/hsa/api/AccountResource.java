@@ -8,12 +8,9 @@ import com.example.hsa.api.Dtos.TransactionResponse;
 import com.example.hsa.api.Dtos.TxResultResponse;
 import com.example.hsa.service.AccountService;
 import com.example.hsa.service.CardService;
-import com.example.hsa.service.Constraints;
-import com.example.hsa.service.TxResult;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -50,21 +47,9 @@ public class AccountResource {
 
     @POST
     @Path("/{id}/deposits")
-    public Response deposit(@PathParam("id") long id,
-                            @HeaderParam("Idempotency-Key") @Size(max = 100) String idempotencyKey,
-                            @Valid @NotNull DepositRequest req) {
-        TxResult r;
-        try {
-            r = accounts.deposit(id, req.amountCents(), idempotencyKey);
-        } catch (RuntimeException e) {
-            // Two requests with the same new key raced; the loser's insert hit the unique index and
-            // its whole transaction (including the credit) rolled back. Retrying now replays the winner.
-            if (idempotencyKey == null || !Constraints.isViolation(e, Constraints.UQ_TX_IDEMPOTENCY_KEY)) {
-                throw e;
-            }
-            r = accounts.deposit(id, req.amountCents(), idempotencyKey);
-        }
-        return Response.status(r.replayed() ? 200 : 201).entity(TxResultResponse.of(r)).build();
+    public Response deposit(@PathParam("id") long id, @Valid @NotNull DepositRequest req) {
+        var r = accounts.deposit(id, req.amountCents());
+        return Response.status(Response.Status.CREATED).entity(TxResultResponse.of(r)).build();
     }
 
     @POST

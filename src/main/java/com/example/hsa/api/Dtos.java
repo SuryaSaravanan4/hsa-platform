@@ -69,17 +69,16 @@ public final class Dtos {
 
     public record TransactionResponse(long id, long accountId, Long cardId, TransactionType type,
                                       long amountCents, String merchantName, MerchantCategory merchantCategory,
-                                      TransactionStatus status, DeclineReason declineReason,
-                                      String idempotencyKey, Instant createdAt) {
+                                      TransactionStatus status, DeclineReason declineReason, Instant createdAt) {
         static TransactionResponse of(HsaTransaction t) {
             return new TransactionResponse(t.id, t.accountId, t.cardId, t.type, t.amountCents, t.merchantName,
-                    t.merchantCategory, t.status, t.declineReason, t.idempotencyKey, t.createdAt);
+                    t.merchantCategory, t.status, t.declineReason, t.createdAt);
         }
     }
 
-    public record TxResultResponse(TransactionResponse transaction, long balanceAfterCents, boolean replayed) {
+    public record TxResultResponse(TransactionResponse transaction, long balanceAfterCents) {
         static TxResultResponse of(TxResult r) {
-            return new TxResultResponse(TransactionResponse.of(r.tx()), r.balanceAfterCents(), r.replayed());
+            return new TxResultResponse(TransactionResponse.of(r.tx()), r.balanceAfterCents());
         }
     }
 

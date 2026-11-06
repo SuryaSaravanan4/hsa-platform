@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 /** Audit trail of every money movement attempt, including declined purchases. */
 @Entity
@@ -44,17 +43,10 @@ public class HsaTransaction extends PanacheEntityBase {
     @Column(name = "decline_reason")
     public DeclineReason declineReason;
 
-    @Column(name = "idempotency_key")
-    public String idempotencyKey;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
     public static List<HsaTransaction> forAccount(long accountId) {
         return list("accountId = ?1 order by id desc", accountId);
-    }
-
-    public static Optional<HsaTransaction> byIdempotencyKey(String key) {
-        return find("idempotencyKey", key).firstResultOptional();
     }
 }

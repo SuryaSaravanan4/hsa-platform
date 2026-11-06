@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 @ApplicationScoped
 public class AccountService {
@@ -46,20 +45,9 @@ public class AccountService {
         return Account.<Account>findByIdOptional(id).orElseThrow(() -> ApiException.notFound("Account", id));
     }
 
-    /**
-     * Deposits funds. If the idempotency key was already used, returns the original transaction
-     * instead of depositing twice.
-     */
+    /** Deposits funds: an atomic credit plus one DEPOSIT row, in one transaction. */
     @Transactional
-    public TxResult deposit(long accountId, long amountCents, String idempotencyKey) {
-        if (idempotencyKey != null) {
-            Optional<HsaTransaction> existing = HsaTransaction.byIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                HsaTransaction prior = existing.get();
-                Idempotency.requireSameRequest(prior, accountId, null, amountCents);
-                return TxResult.replay(prior, ledger.balanceOf(prior.accountId));
-            }
-        }
+    public TxResult deposit(long accountId, long amountCents) {
         if (!ledger.credit(accountId, amountCents)) {
             throw ApiException.notFound("Account", accountId);
         }
@@ -68,10 +56,9 @@ public class AccountService {
         tx.type = TransactionType.DEPOSIT;
         tx.amountCents = amountCents;
         tx.status = TransactionStatus.APPROVED;
-        tx.idempotencyKey = idempotencyKey;
         tx.createdAt = Instant.now();
         tx.persistAndFlush();
-        return TxResult.fresh(tx, ledger.balanceOf(accountId));
+        return new TxResult(tx, ledger.balanceOf(accountId));
     }
 
     public List<HsaTransaction> transactions(long accountId) {

@@ -81,25 +81,4 @@ class AccountAndDepositTest {
                 .post("/api/accounts/{id}/deposits", id).then().statusCode(400);
         assertEquals(0, Api.balance(id));
     }
-
-    @Test
-    void depositWithSameIdempotencyKeyOnlyAppliesOnce() {
-        long id = Api.createAccount();
-        String key = "dep-" + UUID.randomUUID();
-        long first = given().contentType(ContentType.JSON).header("Idempotency-Key", key)
-                .body(Map.of("amountCents", 5_000)).post("/api/accounts/{id}/deposits", id)
-                .then().statusCode(201).body("replayed", equalTo(false))
-                .extract().jsonPath().getLong("transaction.id");
-        long second = given().contentType(ContentType.JSON).header("Idempotency-Key", key)
-                .body(Map.of("amountCents", 5_000)).post("/api/accounts/{id}/deposits", id)
-                .then().statusCode(200).body("replayed", equalTo(true))
-                .extract().jsonPath().getLong("transaction.id");
-        assertEquals(first, second);
-        assertEquals(5_000, Api.balance(id));
-
-        // Same key, different amount: client bug, rejected.
-        given().contentType(ContentType.JSON).header("Idempotency-Key", key)
-                .body(Map.of("amountCents", 9_999)).post("/api/accounts/{id}/deposits", id)
-                .then().statusCode(409).body("code", equalTo("IDEMPOTENCY_KEY_REUSED"));
-    }
 }

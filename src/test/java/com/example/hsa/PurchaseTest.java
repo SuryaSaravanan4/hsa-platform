@@ -7,7 +7,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Map;
-import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -102,22 +101,6 @@ class PurchaseTest {
     @Test
     void unknownCardIs404() {
         Api.purchase(999_999_999L, 100, "PHARMACY").statusCode(404);
-    }
-
-    @Test
-    void retriedPurchaseWithSameIdempotencyKeyChargesOnce() {
-        long[] ac = Api.fundedAccountWithCard(10_000);
-        String key = "buy-" + UUID.randomUUID();
-        Map<String, Object> body = Map.of("amountCents", 3_000, "merchantName", "CVS", "merchantCategory", "PHARMACY");
-        long first = given().contentType(ContentType.JSON).header("Idempotency-Key", key).body(body)
-                .post("/api/cards/{id}/purchases", ac[1])
-                .then().statusCode(201).extract().jsonPath().getLong("transaction.id");
-        long second = given().contentType(ContentType.JSON).header("Idempotency-Key", key).body(body)
-                .post("/api/cards/{id}/purchases", ac[1])
-                .then().statusCode(200).body("replayed", equalTo(true))
-                .extract().jsonPath().getLong("transaction.id");
-        assertEquals(first, second);
-        assertEquals(7_000, Api.balance(ac[0]));
     }
 
     @Test
