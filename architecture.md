@@ -78,7 +78,9 @@ purchases equals `balance_cents`.
    5. Otherwise approve.
    6. Insert one `hsa_transaction` row with the outcome and log one `purchase_decision` line
       (`txId`, `cardId`, `accountId`, `amountCents`, `category`, `outcome`, `declineReason`), then
-      commit. The debit and the row commit or roll back together.
+      commit. The debit and the row commit or roll back together. The log line is written after the
+      row is flushed but before the commit, so if a commit ever failed, the log could show a decision
+      that was rolled back; the `hsa_transaction` table is the source of truth.
 3. The response is HTTP 201 with the transaction and `balanceAfterCents`, approved or declined. A
    decline is a normal business outcome, so it is not an HTTP error.
 
