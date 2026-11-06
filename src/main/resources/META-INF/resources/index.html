@@ -88,8 +88,13 @@
 
   <section>
     <h2>5. Concurrency demo</h2>
-    <p class="muted" style="margin:0">Creates a fresh account with $100 and a card, then sends a $80 and a $50 pharmacy purchase at the same time. Exactly one is approved.</p>
-    <button id="race">Fire $80 + $50 at once</button>
+    <p class="muted" style="margin:0">Creates a fresh account with the starting balance below and a card, then sends a $80 and a $50 pharmacy purchase at the same time.</p>
+    <form id="raceForm">
+      <label for="raceBalance">Starting balance ($)</label>
+      <input id="raceBalance" type="number" min="0.01" step="0.01" value="100.00" required>
+      <div class="muted" id="raceExpect" style="margin-top:4px"></div>
+      <button id="race" type="submit">Fire $80 + $50 at once</button>
+    </form>
     <div id="raceResult" style="margin-top:10px"></div>
   </section>
 
@@ -223,11 +228,28 @@ $('purchaseForm').addEventListener('submit', async (e) => {
   } catch (err) { fail(err); }
 });
 
-$('race').addEventListener('click', async () => {
+// What the race should produce for a starting balance (the purchases are $80 and $50).
+function raceExpectation(cents) {
+  if (cents < 5000) return 'Expect both declined: neither purchase fits.';
+  if (cents < 8000) return 'Expect only the $50 approved: the $80 never fits.';
+  if (cents < 13000) return 'Expect exactly one approved; which one is a race (this is the locking test).';
+  return 'Expect both approved: there is room for both.';
+}
+function updateRaceExpectation() {
+  let text;
+  try { text = raceExpectation(toCents($('raceBalance').value)); } catch (err) { text = err.message; }
+  $('raceExpect').textContent = text;
+}
+$('raceBalance').addEventListener('input', updateRaceExpectation);
+
+$('raceForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  let startCents;
+  try { startCents = toCents($('raceBalance').value); } catch (err) { return fail(err); }
   const btn = $('race'); btn.disabled = true; $('raceResult').textContent = 'Setting up…';
   try {
     const a = await api('POST', '/api/accounts', { holderName: 'Race Demo', email: `race${Date.now()}@example.com`, dateOfBirth: '1990-01-01' });
-    await api('POST', `/api/accounts/${a.id}/deposits`, { amountCents: 10000 });
+    await api('POST', `/api/accounts/${a.id}/deposits`, { amountCents: startCents });
     const card = await api('POST', `/api/accounts/${a.id}/cards`);
     const buy = (cents, name) => api('POST', `/api/cards/${card.id}/purchases`, { amountCents: cents, merchantName: name, merchantCategory: 'PHARMACY' });
     // Both requests are in flight at the same time; the database decides the winner.
@@ -244,6 +266,7 @@ $('race').addEventListener('click', async () => {
 
 (async function init() {
   $('email').value = `user${Date.now()}@example.com`;
+  updateRaceExpectation();
   try {
     const cats = await api('GET', '/api/categories');
     $('category').innerHTML = cats.map(c => `<option value="${c.category}">${c.category}${c.qualified ? ' (qualified)' : ' (not qualified)'}</option>`).join('');

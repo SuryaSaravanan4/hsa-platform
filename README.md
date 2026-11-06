@@ -70,10 +70,16 @@ edited, so Flyway would reject the old schema's checksum.
 ## Demo: concurrent purchases
 
 1. Start the app and open http://localhost:8080.
-2. In **5. Concurrency demo**, press **Fire $80 + $50 at once**.
-3. The page creates a fresh account with $100 and a card, then sends an $80 and a $50 pharmacy purchase
-   at the same time. Exactly one is approved, the other is declined with `INSUFFICIENT_FUNDS`, and the
-   final balance is $20 or $50. Both purchases appear in the transaction history.
+2. In **5. Concurrency demo**, leave **Starting balance ($)** at the default 100.00 and press
+   **Fire $80 + $50 at once**.
+3. The page creates a fresh account with that balance and a card, then sends an $80 and a $50 pharmacy
+   purchase at the same time. With $100, exactly one is approved, the other is declined with
+   `INSUFFICIENT_FUNDS`, and the final balance is $20 or $50. Both purchases appear in the transaction
+   history.
+
+A note under the input says what to expect for the balance you enter: under $50 both are declined;
+$50 to $79.99 only the $50 is approved; $80 to $129.99 exactly one is approved and which one is a race
+(this is the range that exercises the locking); $130 or more both are approved.
 
 The rest of the page walks through the normal flow: create an account, deposit, issue a card, simulate a
 purchase (pick a qualified or non-qualified category), and freeze or unfreeze the card. The **API log**
