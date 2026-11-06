@@ -59,10 +59,10 @@ public final class Dtos {
 
     private static final DateTimeFormatter EXPIRY = DateTimeFormatter.ofPattern("MM/yy");
 
-    public record CardResponse(long id, long accountId, String maskedNumber, String last4, String expiry,
+    public record CardResponse(long id, long accountId, String maskedNumber, String expiry,
                                CardStatus status, Instant createdAt) {
         static CardResponse of(Card c) {
-            return new CardResponse(c.id, c.accountId, "**** **** **** " + c.last4, c.last4,
+            return new CardResponse(c.id, c.accountId, "**** **** **** " + c.last4,
                     EXPIRY.format(c.expiry), c.status, c.createdAt);
         }
     }
