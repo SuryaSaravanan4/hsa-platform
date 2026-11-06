@@ -1,0 +1,105 @@
+package com.example.hsa;
+
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@QuarkusTest
+class AccountAndDepositTest {
+
+    @Test
+    void createsAccountWithZeroBalance() {
+        String email = "Alice-" + UUID.randomUUID() + "@Example.com";
+        given().contentType(ContentType.JSON)
+                .body(Map.of("holderName", "Alice Smith", "email", email, "dateOfBirth", "1988-04-02"))
+                .post("/api/accounts")
+                .then().statusCode(201)
+                .body("id", notNullValue())
+                .body("holderName", equalTo("Alice Smith"))
+                .body("email", equalTo(email.toLowerCase()))
+                .body("dateOfBirth", equalTo("1988-04-02"))
+                .body("balanceCents", equalTo(0));
+    }
+
+    @Test
+    void rejectsDuplicateEmailCaseInsensitively() {
+        String email = "dup-" + UUID.randomUUID() + "@example.com";
+        Map<String, Object> body = Map.of("holderName", "A", "email", email, "dateOfBirth", "1990-01-01");
+        given().contentType(ContentType.JSON).body(body).post("/api/accounts").then().statusCode(201);
+        given().contentType(ContentType.JSON)
+                .body(Map.of("holderName", "B", "email", email.toUpperCase(), "dateOfBirth", "1990-01-01"))
+                .post("/api/accounts")
+                .then().statusCode(409).body("code", equalTo("EMAIL_TAKEN"));
+    }
+
+    @Test
+    void rejectsInvalidAccountInput() {
+        given().contentType(ContentType.JSON)
+                .body(Map.of("holderName", "", "email", "not-an-email", "dateOfBirth", "1990-01-01"))
+                .post("/api/accounts").then().statusCode(400);
+        given().contentType(ContentType.JSON)
+                .body(Map.of("holderName", "Future", "email", "f-" + UUID.randomUUID() + "@example.com",
+                        "dateOfBirth", LocalDate.now().plusDays(1).toString()))
+                .post("/api/accounts").then().statusCode(400);
+    }
+
+    @Test
+    void unknownAccountIs404() {
+        given().get("/api/accounts/{id}", 999_999_999L).then().statusCode(404).body("code", equalTo("NOT_FOUND"));
+        Api.deposit(999_999_999L, 100).statusCode(404);
+    }
+
+    @Test
+    void depositIncreasesBalanceAndIsRecorded() {
+        long id = Api.createAccount();
+        Api.deposit(id, 10_000).statusCode(201)
+                .body("transaction.type", equalTo("DEPOSIT"))
+                .body("transaction.status", equalTo("APPROVED"))
+                .body("transaction.amountCents", equalTo(10_000))
+                .body("balanceAfterCents", equalTo(10_000));
+        Api.deposit(id, 2_550).statusCode(201).body("balanceAfterCents", equalTo(12_550));
+        assertEquals(12_550, Api.balance(id));
+
+        given().get("/api/accounts/{id}/transactions", id)
+                .then().statusCode(200).body("size()", equalTo(2));
+    }
+
+    @Test
+    void rejectsNonPositiveOrMissingDepositAmounts() {
+        long id = Api.createAccount();
+        Api.deposit(id, 0).statusCode(400);
+        Api.deposit(id, -500).statusCode(400);
+        given().contentType(ContentType.JSON).body(Map.of())
+                .post("/api/accounts/{id}/deposits", id).then().statusCode(400);
+        assertEquals(0, Api.balance(id));
+    }
+
+    @Test
+    void depositWithSameIdempotencyKeyOnlyAppliesOnce() {
+        long id = Api.createAccount();
+        String key = "dep-" + UUID.randomUUID();
+        long first = given().contentType(ContentType.JSON).header("Idempotency-Key", key)
+                .body(Map.of("amountCents", 5_000)).post("/api/accounts/{id}/deposits", id)
+                .then().statusCode(201).body("replayed", equalTo(false))
+                .extract().jsonPath().getLong("transaction.id");
+        long second = given().contentType(ContentType.JSON).header("Idempotency-Key", key)
+                .body(Map.of("amountCents", 5_000)).post("/api/accounts/{id}/deposits", id)
+                .then().statusCode(200).body("replayed", equalTo(true))
+                .extract().jsonPath().getLong("transaction.id");
+        assertEquals(first, second);
+        assertEquals(5_000, Api.balance(id));
+
+        // Same key, different amount: client bug, rejected.
+        given().contentType(ContentType.JSON).header("Idempotency-Key", key)
+                .body(Map.of("amountCents", 9_999)).post("/api/accounts/{id}/deposits", id)
+                .then().statusCode(409).body("code", equalTo("IDEMPOTENCY_KEY_REUSED"));
+    }
+}
