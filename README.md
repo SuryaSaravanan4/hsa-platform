@@ -81,9 +81,13 @@ A note under the input says what to expect for the balance you enter: under $50 
 $50 to $79.99 only the $50 is approved; $80 to $129.99 exactly one is approved and which one is a race
 (this is the range that exercises the locking); $130 or more both are approved.
 
-The rest of the page walks through the normal flow: create an account, deposit, issue a card, simulate a
-purchase (pick a qualified or non-qualified category), and freeze or unfreeze the card. The **API log**
-at the bottom shows every request and response.
+The rest of the page walks through the normal flow, numbered 1 to 4: create an account (it becomes the
+**Active account** chosen at the top of the page), deposit, issue a virtual card, and simulate a
+purchase. Preset buttons fill in a qualified purchase, two non-qualified ones and one larger than the
+balance. Freezing the card and swiping it shows the `CARD_INACTIVE` decline. Each action shows its
+result inline (approved or declined with the reason in plain words), and the balance and transaction
+history refresh automatically. The collapsible **API log** at the bottom shows every request and
+response.
 
 The same race with curl, against an account that has $100 and card id 1:
 

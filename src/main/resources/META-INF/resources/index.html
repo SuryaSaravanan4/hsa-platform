@@ -5,76 +5,141 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HSA Demo</title>
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --muted:#667085; --line:#e3e6eb;
-          --ok:#127a3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fdecea; --accent:#2f5bd3; }
+  :root { --bg:#f5f6f8; --card:#fff; --ink:#1d2330; --muted:#667085; --line:#e3e6eb;
+          --ok:#127a3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fdecea; --info:#1f4fb8; --infobg:#eaf0fd;
+          --accent:#2f5bd3; }
   * { box-sizing: border-box; }
-  body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--ink); }
-  header { padding:16px 24px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0; }
-  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); }
-  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--card); border-bottom:1px solid var(--line); }
+  .bar { max-width:1180px; margin:0 auto; padding:12px 16px; display:flex; gap:12px 20px; align-items:center; flex-wrap:wrap; }
+  .bar h1 { font-size:19px; margin:0; }
+  .bar .pick { display:flex; align-items:center; gap:8px; flex:1 1 320px; max-width:460px; }
+  .bar .pick label { margin:0; white-space:nowrap; font-weight:600; color:var(--ink); font-size:13px; }
+  main { max-width:1180px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(330px, 1fr)); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
   section.wide { grid-column:1 / -1; }
-  h2 { font-size:15px; margin:0 0 12px; }
-  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 2px; }
-  input, select { width:100%; padding:7px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; }
-  button { margin-top:10px; padding:7px 12px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; font:inherit; cursor:pointer; }
+  h2 { font-size:16px; margin:0 0 4px; display:flex; align-items:center; gap:8px; }
+  h2 .step { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; }
+  .lede { margin:0 0 6px; color:var(--muted); font-size:13px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 3px; }
+  input, select { width:100%; padding:8px 10px; border:1px solid #cfd4dc; border-radius:6px; font:inherit; background:#fff; }
+  input:focus, select:focus, button:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  button { margin-top:12px; padding:8px 14px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; font:inherit; font-weight:600; cursor:pointer; }
   button.secondary { background:#fff; color:var(--accent); }
+  button.small { margin:0; padding:3px 10px; font-size:13px; }
   button:disabled { opacity:.5; cursor:default; }
-  .balance { font-size:28px; font-weight:600; }
+  .balance { font-size:32px; font-weight:700; letter-spacing:-.5px; margin:2px 0; font-variant-numeric:tabular-nums; }
   .muted { color:var(--muted); }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; }
-  .APPROVED, .ACTIVE { background:var(--okbg); color:var(--ok); }
-  .DECLINED, .FROZEN { background:var(--badbg); color:var(--bad); }
-  #log { font:12px/1.4 ui-monospace, Consolas, monospace; background:#0f1420; color:#d6dbe5; padding:10px; border-radius:6px; max-height:180px; overflow:auto; white-space:pre-wrap; }
-  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  .row { display:flex; gap:10px; } .row > * { flex:1; min-width:0; }
+  .presets { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .presets button { margin:0; padding:3px 9px; font-size:12px; font-weight:500; background:#fff; color:var(--ink); border-color:#cfd4dc; }
+
+  /* Inline result banners (replace alert popups). */
+  .banner { margin-top:12px; padding:9px 12px; border-radius:6px; font-size:14px; border:1px solid transparent; }
+  .banner:empty { display:none; }
+  .banner.ok { background:var(--okbg); color:var(--ok); border-color:#b7e4c7; }
+  .banner.bad { background:var(--badbg); color:var(--bad); border-color:#f5c2bd; }
+  .banner.info { background:var(--infobg); color:var(--info); border-color:#c7d6f7; }
+
+  /* Virtual card graphic. */
+  .vcard { position:relative; max-width:330px; aspect-ratio:1.586; border-radius:12px; padding:16px 18px; margin:8px 0 10px; color:#fff;
+           background:linear-gradient(135deg, #2f5bd3, #1b3480); box-shadow:0 4px 14px rgba(27,52,128,.25);
+           display:flex; flex-direction:column; justify-content:space-between; }
+  .vcard.FROZEN { background:linear-gradient(135deg, #8a94a6, #5b6475); box-shadow:none; }
+  .vcard .top { display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; letter-spacing:.5px; }
+  .vcard .num { font:600 19px/1 ui-monospace, Consolas, monospace; letter-spacing:2px; }
+  .vcard .bottom { display:flex; justify-content:space-between; align-items:flex-end; font-size:12px; opacity:.95; }
+  .vcard .chipstatus { background:rgba(255,255,255,.2); padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+  .oldcards { font-size:13px; color:var(--muted); margin:4px 0 0; }
+
+  /* History table. */
   .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:600; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  td.reason { white-space:normal; min-width:220px; }
+  td.reason code { font-size:11px; color:var(--muted); }
+  tr.DECLINED td { background:#fffafa; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px; font-weight:700; }
+  .pill.APPROVED, .pill.ACTIVE { background:var(--okbg); color:var(--ok); }
+  .pill.DECLINED, .pill.FROZEN { background:var(--badbg); color:var(--bad); }
+
+  /* Concurrency demo results. */
+  .race { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .race .tile { border:1px solid var(--line); border-radius:8px; padding:10px 12px; text-align:center; }
+  .race .tile.APPROVED { background:var(--okbg); border-color:#b7e4c7; }
+  .race .tile.DECLINED { background:var(--badbg); border-color:#f5c2bd; }
+  .race .amt { font-size:13px; color:var(--muted); }
+  .race .st { font-size:20px; font-weight:800; margin:2px 0; }
+  .race .tile.APPROVED .st { color:var(--ok); } .race .tile.DECLINED .st { color:var(--bad); }
+  .race .why { font-size:12px; color:var(--muted); min-height:1em; }
+  .race .final { grid-column:1 / -1; text-align:center; }
+  .race .final b { font-size:28px; display:block; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .race .explain { grid-column:1 / -1; font-size:13px; color:var(--muted); text-align:center; }
+
+  details.log summary { cursor:pointer; font-weight:600; font-size:16px; }
+  details.log summary .muted { font-weight:400; font-size:13px; }
+  #log { margin-top:10px; font:12px/1.45 ui-monospace, Consolas, monospace; background:#0f1420; color:#d6dbe5; padding:10px; border-radius:6px; max-height:240px; overflow:auto; white-space:pre-wrap; word-break:break-all; }
+  @media (max-width:520px) { .race { grid-template-columns:1fr; } .bar .pick { flex-wrap:wrap; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>HSA Demo</h1>
-  <div style="min-width:260px">
-    <select id="accountSelect" aria-label="Current account"></select>
+  <div class="bar">
+    <h1>HSA Demo</h1>
+    <div class="pick">
+      <label for="accountSelect">Active account</label>
+      <select id="accountSelect" aria-label="Active account"></select>
+    </div>
+    <span class="muted">Steps 2 to 4 act on the active account. Amounts are stored as integer cents.</span>
   </div>
-  <span class="muted">All amounts are stored as integer cents.</span>
 </header>
 
 <main>
-  <section>
-    <h2>1. Create account</h2>
+  <section aria-labelledby="h-create">
+    <h2 id="h-create"><span class="step">1</span>Create account</h2>
+    <p class="lede">The new account becomes the active account.</p>
     <form id="createForm">
       <label for="holderName">Holder name</label>
-      <input id="holderName" required value="Jane Doe">
+      <input id="holderName" required value="Jane Doe" autocomplete="off">
       <label for="email">Email</label>
-      <input id="email" type="email" required>
+      <input id="email" type="email" required autocomplete="off">
       <label for="dob">Date of birth</label>
       <input id="dob" type="date" required value="1990-01-15">
       <button type="submit">Create account</button>
     </form>
+    <div class="banner" id="createResult" role="status" aria-live="polite"></div>
   </section>
 
-  <section>
-    <h2>2. Account</h2>
+  <section aria-labelledby="h-account">
+    <h2 id="h-account"><span class="step">2</span>Balance and deposit</h2>
     <div class="muted" id="accountLabel">No account selected</div>
-    <div class="balance" id="balance">–</div>
+    <div class="balance" id="balance" aria-live="polite">–</div>
     <form id="depositForm">
       <label for="depositAmount">Deposit amount ($)</label>
       <input id="depositAmount" type="number" min="0.01" step="0.01" value="100.00" required>
       <button type="submit">Deposit</button>
     </form>
+    <div class="banner" id="depositResult" role="status" aria-live="polite"></div>
   </section>
 
-  <section>
-    <h2>3. Card</h2>
+  <section aria-labelledby="h-card">
+    <h2 id="h-card"><span class="step">3</span>Virtual card</h2>
     <div id="cards" class="muted">No cards</div>
     <button id="issueCard" class="secondary">Issue virtual card</button>
+    <div class="banner" id="cardResult" role="status" aria-live="polite"></div>
   </section>
 
-  <section>
-    <h2>4. Simulate a purchase</h2>
+  <section aria-labelledby="h-purchase">
+    <h2 id="h-purchase"><span class="step">4</span>Simulate a purchase</h2>
+    <p class="lede">Swipes the active account's newest card. Try a preset:</p>
+    <div class="presets" role="group" aria-label="Purchase presets">
+      <button type="button" data-preset="CVS Pharmacy|25.00|PHARMACY">Pharmacy $25 (qualified)</button>
+      <button type="button" data-preset="Olive Garden|45.00|RESTAURANT">Restaurant $45 (not qualified)</button>
+      <button type="button" data-preset="Best Buy|120.00|ELECTRONICS">Electronics $120 (not qualified)</button>
+      <button type="button" data-preset="City Hospital|5000.00|HOSPITAL">Hospital $5,000 (more than balance)</button>
+    </div>
     <form id="purchaseForm">
       <div class="row">
         <div><label for="merchant">Merchant</label><input id="merchant" value="CVS Pharmacy" required></div>
@@ -84,22 +149,23 @@
       <select id="category"></select>
       <button type="submit">Swipe card</button>
     </form>
+    <div class="banner" id="purchaseResult" role="status" aria-live="polite"></div>
   </section>
 
-  <section>
-    <h2>5. Concurrency demo</h2>
-    <p class="muted" style="margin:0">Creates a fresh account with the starting balance below and a card, then sends a $80 and a $50 pharmacy purchase at the same time.</p>
+  <section aria-labelledby="h-race">
+    <h2 id="h-race"><span class="step">5</span>Concurrency demo</h2>
+    <p class="lede">Creates a fresh account with the starting balance below and a card, then sends a $80 and a $50 pharmacy purchase at the same time.</p>
     <form id="raceForm">
       <label for="raceBalance">Starting balance ($)</label>
       <input id="raceBalance" type="number" min="0.01" step="0.01" value="100.00" required>
-      <div class="muted" id="raceExpect" style="margin-top:4px"></div>
+      <div class="muted" id="raceExpect" style="margin-top:4px;font-size:13px"></div>
       <button id="race" type="submit">Fire $80 + $50 at once</button>
     </form>
-    <div id="raceResult" style="margin-top:10px"></div>
+    <div id="raceResult" aria-live="polite"></div>
   </section>
 
-  <section class="wide">
-    <h2>Transaction history</h2>
+  <section class="wide" aria-labelledby="h-history">
+    <h2 id="h-history">Transaction history <span class="muted" style="font-weight:400;font-size:13px">(active account, newest first)</span></h2>
     <div class="scroll">
       <table>
         <thead><tr><th>#</th><th>Time</th><th>Type</th><th>Merchant</th><th>Category</th><th class="num">Amount</th><th>Status</th><th>Decline reason</th></tr></thead>
@@ -109,8 +175,10 @@
   </section>
 
   <section class="wide">
-    <h2>API log</h2>
-    <div id="log"></div>
+    <details class="log">
+      <summary>API log <span class="muted">(every request and response, newest first; click to show)</span></summary>
+      <div id="log"></div>
+    </details>
   </section>
 </main>
 
@@ -128,33 +196,85 @@ function toCents(str) {
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function log(line) { const el = $('log'); el.textContent = line + '\n' + el.textContent; }
 
+// Plain-English text for the API's decline reasons and error codes.
+const DECLINE_TEXT = {
+  CARD_INACTIVE: 'Card is frozen or expired',
+  NOT_QUALIFIED: 'Not a qualified medical expense',
+  INSUFFICIENT_FUNDS: 'Insufficient funds',
+};
+const ERROR_TEXT = {
+  EMAIL_TAKEN: 'An account with this email already exists. Use a different email.',
+  CARD_ALREADY_ACTIVE: 'This account already has an active card. Freeze it before issuing or unfreezing another.',
+  INTERNAL: 'Something went wrong on the server. Please try again.',
+};
+const FIELD_TEXT = { holderName: 'Holder name', email: 'Email', dateOfBirth: 'Date of birth',
+                     amountCents: 'Amount', merchantName: 'Merchant', merchantCategory: 'Merchant category' };
+
+// Turns an error response into one readable sentence (the raw response still goes to the API log).
+function errorMessage(status, data) {
+  if (data && data.code && ERROR_TEXT[data.code]) return ERROR_TEXT[data.code];
+  if (data && Array.isArray(data.violations) && data.violations.length) {
+    return data.violations.map(v => {
+      const field = String(v.field || '').split('.').pop();
+      return `${FIELD_TEXT[field] || field || 'Input'} ${v.message}.`;
+    }).join(' ');
+  }
+  if (data && data.message) return data.message.replace(/^\w/, c => c.toUpperCase()) + '.';
+  if (status === 400) return 'The request was not valid. Check the fields and try again.';
+  return 'Request failed (HTTP ' + status + ').';
+}
+
 async function api(method, path, body) {
   const opts = { method, headers: {} };
   if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const res = await fetch(path, opts);
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
   log(`${method} ${path} -> ${res.status} ${text.slice(0, 200)}`);
-  if (!res.ok) {
-    const msg = data && (data.message || (data.violations && data.violations.map(v => v.field + ': ' + v.message).join(', ')));
-    throw new Error(msg || ('HTTP ' + res.status));
-  }
+  if (!res.ok) throw new Error(errorMessage(res.status, data));
   return data;
 }
-const fail = (e) => alert(e.message);
+
+function banner(id, kind, html) { const el = $(id); el.className = 'banner ' + kind; el.innerHTML = html; }
+function clearBanner(id) { banner(id, '', ''); }
+function needAccount(id) {
+  if (state.accountId) return false;
+  banner(id, 'info', 'Create an account in step 1, or pick one in <b>Active account</b> at the top.');
+  return true;
+}
 
 async function loadAccounts(selectId) {
   const list = await api('GET', '/api/accounts');
   const sel = $('accountSelect');
-  sel.innerHTML = '<option value="">Select an account…</option>' +
+  sel.innerHTML = '<option value="">' + (list.length ? 'Select an account…' : 'No accounts yet: create one in step 1') + '</option>' +
     list.map(a => `<option value="${a.id}">#${a.id} ${esc(a.holderName)} (${esc(a.email)})</option>`).join('');
-  if (selectId) sel.value = String(selectId);
-  else if (state.accountId) sel.value = String(state.accountId);
+  if (selectId) state.accountId = Number(selectId);
+  sel.value = state.accountId ? String(state.accountId) : '';
+  return list;
+}
+
+function cardHtml(c) {
+  const toggle = c.status === 'ACTIVE' ? 'freeze' : 'unfreeze';
+  return `
+    <div class="vcard ${c.status}" aria-label="Virtual card ${esc(c.maskedNumber)}, ${c.status.toLowerCase()}">
+      <div class="top"><span>HSA DEBIT</span><span class="chipstatus">${c.status}</span></div>
+      <div class="num">${esc(c.maskedNumber)}</div>
+      <div class="bottom"><span>Card #${c.id}</span><span>EXP ${esc(c.expiry)}</span></div>
+    </div>
+    <button class="secondary small" data-card="${c.id}" data-action="${toggle}">${toggle === 'freeze' ? 'Freeze card' : 'Unfreeze card'}</button>`;
 }
 
 async function refresh() {
   const id = state.accountId;
-  if (!id) return;
+  if (!id) {
+    $('accountLabel').textContent = 'No account selected';
+    $('balance').textContent = '–';
+    state.cards = [];
+    $('cards').innerHTML = 'No cards';
+    $('txBody').innerHTML = '<tr><td colspan="8" class="muted">No account selected</td></tr>';
+    return;
+  }
   const [acct, cards, txs] = await Promise.all([
     api('GET', `/api/accounts/${id}`),
     api('GET', `/api/accounts/${id}/cards`),
@@ -162,26 +282,24 @@ async function refresh() {
   ]);
   $('accountLabel').textContent = `#${acct.id} ${acct.holderName} · ${acct.email}`;
   $('balance').textContent = money(acct.balanceCents);
-  state.cards = cards;
-  $('cards').innerHTML = cards.length ? cards.map(c => `
-      <div style="margin-bottom:6px">
-        <code>${esc(c.maskedNumber)}</code> exp ${esc(c.expiry)} <span class="pill ${c.status}">${c.status}</span>
-        <button class="secondary" style="margin:0 0 0 6px;padding:2px 8px" data-card="${c.id}" data-action="${c.status === 'ACTIVE' ? 'freeze' : 'unfreeze'}">
-          ${c.status === 'ACTIVE' ? 'Freeze' : 'Unfreeze'}</button>
-      </div>`).join('') : 'No cards';
+  state.cards = cards; // newest first
+  $('cards').innerHTML = cards.length
+    ? cardHtml(cards[0]) + (cards.length > 1 ? `<p class="oldcards">Older cards: ${cards.slice(1).map(c => `${esc(c.maskedNumber.slice(-4))} (${c.status.toLowerCase()})`).join(', ')}</p>` : '')
+    : 'No cards yet. Issue one below.';
   $('txBody').innerHTML = txs.length ? txs.map(t => `
-      <tr><td>${t.id}</td><td>${new Date(t.createdAt).toLocaleTimeString()}</td><td>${t.type}</td>
+      <tr class="${t.status}"><td>${t.id}</td><td>${new Date(t.createdAt).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', second:'2-digit' })}</td>
+      <td>${t.type === 'PURCHASE' ? 'Purchase' : 'Deposit'}</td>
       <td>${esc(t.merchantName || '')}</td><td>${t.merchantCategory || ''}</td>
       <td class="num">${t.type === 'PURCHASE' ? '-' : '+'}${money(t.amountCents)}</td>
-      <td><span class="pill ${t.status}">${t.status}</span></td><td>${t.declineReason || ''}</td></tr>`).join('')
-    : '<tr><td colspan="8" class="muted">No transactions</td></tr>';
+      <td><span class="pill ${t.status}">${t.status}</span></td>
+      <td class="reason">${t.declineReason ? `${esc(DECLINE_TEXT[t.declineReason] || t.declineReason)} <code>(${t.declineReason})</code>` : ''}</td></tr>`).join('')
+    : '<tr><td colspan="8" class="muted">No transactions yet</td></tr>';
 }
-
-function activeCard() { return state.cards.find(c => c.status === 'ACTIVE'); }
 
 $('accountSelect').addEventListener('change', (e) => {
   state.accountId = e.target.value ? Number(e.target.value) : null;
-  refresh().catch(fail);
+  ['createResult', 'depositResult', 'cardResult', 'purchaseResult'].forEach(clearBanner);
+  refresh().catch(err => banner('depositResult', 'bad', esc(err.message)));
 });
 
 $('createForm').addEventListener('submit', async (e) => {
@@ -192,40 +310,66 @@ $('createForm').addEventListener('submit', async (e) => {
     $('email').value = `user${Date.now()}@example.com`;
     await loadAccounts(a.id);
     await refresh();
-  } catch (err) { fail(err); }
+    ['depositResult', 'cardResult', 'purchaseResult'].forEach(clearBanner);
+    banner('createResult', 'ok', `Account <b>#${a.id}</b> created for ${esc(a.holderName)} and set as the active account. Next: deposit funds (step 2).`);
+  } catch (err) { banner('createResult', 'bad', esc(err.message)); }
 });
 
 $('depositForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!state.accountId) return alert('Select or create an account first');
+  if (needAccount('depositResult')) return;
   try {
-    await api('POST', `/api/accounts/${state.accountId}/deposits`, { amountCents: toCents($('depositAmount').value) });
+    const r = await api('POST', `/api/accounts/${state.accountId}/deposits`, { amountCents: toCents($('depositAmount').value) });
     await refresh();
-  } catch (err) { fail(err); }
+    banner('depositResult', 'ok', `Deposited <b>${money(r.transaction.amountCents)}</b>. New balance ${money(r.balanceAfterCents)}.`);
+  } catch (err) { banner('depositResult', 'bad', esc(err.message)); }
 });
 
 $('issueCard').addEventListener('click', async () => {
-  if (!state.accountId) return alert('Select or create an account first');
-  try { await api('POST', `/api/accounts/${state.accountId}/cards`); await refresh(); } catch (err) { fail(err); }
+  if (needAccount('cardResult')) return;
+  try {
+    const c = await api('POST', `/api/accounts/${state.accountId}/cards`);
+    await refresh();
+    banner('cardResult', 'ok', `Card ending <b>${esc(c.maskedNumber.slice(-4))}</b> issued. Only the last 4 digits are stored.`);
+  } catch (err) { banner('cardResult', 'bad', esc(err.message)); }
 });
 
 $('cards').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-card]');
   if (!b) return;
-  try { await api('POST', `/api/cards/${b.dataset.card}/${b.dataset.action}`); await refresh(); } catch (err) { fail(err); }
+  try {
+    const c = await api('POST', `/api/cards/${b.dataset.card}/${b.dataset.action}`);
+    await refresh();
+    banner('cardResult', c.status === 'ACTIVE' ? 'ok' : 'info',
+      c.status === 'ACTIVE' ? 'Card unfrozen. Purchases can be approved again.' : 'Card frozen. Purchases on it will be declined (try one in step 4).');
+  } catch (err) { banner('cardResult', 'bad', esc(err.message)); }
 });
 
 $('purchaseForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const card = activeCard();
-  if (!card) return alert('This account has no active card. Issue or unfreeze one first.');
+  if (needAccount('purchaseResult')) return;
+  // The newest card, even if frozen: the API then declines with CARD_INACTIVE, which is what we want to show.
+  const card = state.cards[0];
+  if (!card) return banner('purchaseResult', 'info', 'This account has no card yet. Issue one in step 3.');
   try {
     const r = await api('POST', `/api/cards/${card.id}/purchases`,
       { amountCents: toCents($('amount').value), merchantName: $('merchant').value, merchantCategory: $('category').value });
     const t = r.transaction;
-    alert(t.status === 'APPROVED' ? `Approved. New balance ${money(r.balanceAfterCents)}` : `Declined: ${t.declineReason}`);
     await refresh();
-  } catch (err) { fail(err); }
+    if (t.status === 'APPROVED') {
+      banner('purchaseResult', 'ok', `<b>Approved:</b> ${money(t.amountCents)} at ${esc(t.merchantName)}. New balance ${money(r.balanceAfterCents)}.`);
+    } else {
+      banner('purchaseResult', 'bad', `<b>Declined:</b> ${esc(DECLINE_TEXT[t.declineReason] || t.declineReason)} <code>(${t.declineReason})</code>. Balance unchanged at ${money(r.balanceAfterCents)}.`);
+    }
+  } catch (err) { banner('purchaseResult', 'bad', esc(err.message)); }
+});
+
+document.querySelector('.presets').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-preset]');
+  if (!b) return;
+  const [merchant, amount, category] = b.dataset.preset.split('|');
+  $('merchant').value = merchant; $('amount').value = amount; $('category').value = category;
+  clearBanner('purchaseResult');
 });
 
 // What the race should produce for a starting balance (the purchases are $80 and $50).
@@ -242,11 +386,20 @@ function updateRaceExpectation() {
 }
 $('raceBalance').addEventListener('input', updateRaceExpectation);
 
+// One sentence explaining the outcome of the race.
+function raceExplanation(startCents, r80, r50) {
+  const a80 = r80.transaction.status === 'APPROVED', a50 = r50.transaction.status === 'APPROVED';
+  if (a80 && a50) return 'There was room for both, so both were approved.';
+  if (!a80 && !a50) return 'Neither purchase fit the balance, so both were declined.';
+  if (startCents >= 8000) return `Both arrived together. MySQL locked the account row for the first debit; the other then re-checked the new balance and was declined. Exactly one wins, never both.`;
+  return 'Only the $50 fit the balance.';
+}
+
 $('raceForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   let startCents;
-  try { startCents = toCents($('raceBalance').value); } catch (err) { return fail(err); }
-  const btn = $('race'); btn.disabled = true; $('raceResult').textContent = 'Setting up…';
+  try { startCents = toCents($('raceBalance').value); } catch (err) { $('raceResult').innerHTML = `<div class="banner bad">${esc(err.message)}</div>`; return; }
+  const btn = $('race'); btn.disabled = true; $('raceResult').innerHTML = '<div class="banner info">Setting up…</div>';
   try {
     const a = await api('POST', '/api/accounts', { holderName: 'Race Demo', email: `race${Date.now()}@example.com`, dateOfBirth: '1990-01-01' });
     await api('POST', `/api/accounts/${a.id}/deposits`, { amountCents: startCents });
@@ -255,12 +408,17 @@ $('raceForm').addEventListener('submit', async (e) => {
     // Both requests are in flight at the same time; the database decides the winner.
     const [r80, r50] = await Promise.all([buy(8000, 'Race $80'), buy(5000, 'Race $50')]);
     const acct = await api('GET', `/api/accounts/${a.id}`);
-    const line = (label, r) => `${label}: <span class="pill ${r.transaction.status}">${r.transaction.status}</span> ${r.transaction.declineReason || ''}`;
-    $('raceResult').innerHTML = `${line('$80', r80)}<br>${line('$50', r50)}<br>Final balance: <b>${money(acct.balanceCents)}</b>`;
+    const tile = (label, r) => `<div class="tile ${r.transaction.status}"><div class="amt">${label} purchase</div>
+        <div class="st">${r.transaction.status}</div>
+        <div class="why">${r.transaction.declineReason ? esc(DECLINE_TEXT[r.transaction.declineReason]) : '&nbsp;'}</div></div>`;
+    $('raceResult').innerHTML = `<div class="race">${tile('$80', r80)}${tile('$50', r50)}
+        <div class="final muted">Started with ${money(startCents)}. Final balance <b>${money(acct.balanceCents)}</b></div>
+        <div class="explain">${raceExplanation(startCents, r80, r50)} Account #${a.id} is now the active account.</div></div>`;
     state.accountId = a.id;
+    ['createResult', 'depositResult', 'cardResult', 'purchaseResult'].forEach(clearBanner); // they described the previous account
     await loadAccounts(a.id);
     await refresh();
-  } catch (err) { $('raceResult').textContent = ''; fail(err); }
+  } catch (err) { $('raceResult').innerHTML = `<div class="banner bad">${esc(err.message)}</div>`; }
   finally { btn.disabled = false; }
 });
 
@@ -270,8 +428,11 @@ $('raceForm').addEventListener('submit', async (e) => {
   try {
     const cats = await api('GET', '/api/categories');
     $('category').innerHTML = cats.map(c => `<option value="${c.category}">${c.category}${c.qualified ? ' (qualified)' : ' (not qualified)'}</option>`).join('');
-    await loadAccounts();
-  } catch (err) { fail(err); }
+    const accounts = await loadAccounts();
+    // Start on the most recent account so a reviewer sees data immediately.
+    if (accounts.length) { state.accountId = accounts[0].id; $('accountSelect').value = String(state.accountId); }
+    await refresh();
+  } catch (err) { banner('createResult', 'bad', 'Could not reach the API: ' + esc(err.message)); }
 })();
 </script>
 </body>
