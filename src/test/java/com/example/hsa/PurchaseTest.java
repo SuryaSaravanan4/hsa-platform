@@ -130,6 +130,23 @@ class PurchaseTest {
         assertEquals(10_000, Api.balance(ac[0]));
     }
 
+    /** Amounts are integer cents: fractions and numeric strings are rejected, never truncated or coerced. */
+    @ParameterizedTest
+    @ValueSource(strings = {"12.5", "2500.99", "\"100\""})
+    void nonIntegerPurchaseAmountsAre400(String rawAmount) {
+        long[] ac = Api.fundedAccountWithCard(10_000);
+        given().contentType(ContentType.JSON)
+                .body("{\"amountCents\":" + rawAmount + ",\"merchantName\":\"CVS\",\"merchantCategory\":\"PHARMACY\"}")
+                .post("/api/cards/{id}/purchases", ac[1]).then().statusCode(400);
+        assertEquals(10_000, Api.balance(ac[0]));
+        // A real integer still works.
+        given().contentType(ContentType.JSON)
+                .body("{\"amountCents\":1250,\"merchantName\":\"CVS\",\"merchantCategory\":\"PHARMACY\"}")
+                .post("/api/cards/{id}/purchases", ac[1]).then().statusCode(201)
+                .body("transaction.status", equalTo("APPROVED"));
+        assertEquals(8_750, Api.balance(ac[0]));
+    }
+
     @Test
     void unknownCardIs404() {
         Api.purchase(999_999_999L, 100, "PHARMACY").statusCode(404);

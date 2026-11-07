@@ -89,8 +89,8 @@ right, possibly subtly wrong, and possibly doing more than was asked. My review 
     green, so each diff could be reviewed on its own.
 
 I also reviewed the build file and imports and asked for the tidy-up pass described below, and I set up
-the private GitHub repository, keeping my working notes and study guides out of it. Before submitting,
-I cloned the repository from GitHub into a new folder and followed only the README to confirm it runs.
+the private GitHub repository; my working notes and study guides are not in it or in its history. Fresh
+clones that follow only the README were also checked (see the verification section).
 
 ## Representative prompts and workflows
 
@@ -187,15 +187,18 @@ to the Java code, the API or the schema:
 
 Smaller ones, caught by the compiler, the first test run or screenshots: an annotation that doesn't
 exist (`@NotNullBody`); body-less `POST` endpoints returning HTTP 415 because of a class-level
-`@Consumes(JSON)`; and, in the first version of the UI polish, a status color that leaked onto the card
+`@Consumes(JSON)`; amounts sent as `12.5` or `"100"` being silently truncated or converted instead of
+rejected (an independent grading review caught this; the API now rejects non-integer amounts with 400,
+with tests for both deposits and purchases); and, in the first version of the UI polish, a status color that leaked onto the card
 graphic and result messages that stayed on screen after switching accounts. Both UI issues were seen
 in the screenshots and fixed before that change was committed.
 
 ## How the final implementation was verified
 
-- **70 automated tests**, all through HTTP against real MySQL 8.4 in Docker, with no mocks: the
+- **76 automated tests**, all through HTTP against real MySQL 8.4 in Docker, with no mocks: the
   account, deposit, card and purchase paths; every decline reason, including an expired card using an
-  injected test clock; validation and 404/409 errors; and the concurrency tests.
+  injected test clock; validation and 404/409 errors, including non-integer amounts; and the
+  concurrency tests.
 - **Repeated runs.** The suite ran after every change, and several times back to back after the
   simplification pass (3 consecutive full runs with no failures). It passed again after the UI changes
   and after the tidy-up.
@@ -211,6 +214,8 @@ in the screenshots and fixed before that change was committed.
 - **Fresh clone.** A new clone following only the README (taken before the final UI and tidy-up
   commits): 70 tests passed with `mvnw.cmd`, the app started with `quarkus:dev`, and the
   **Fire $80 + $50 at once** button showed $80 approved, $50 declined `INSUFFICIENT_FUNDS`, and $20 left.
+  A second fresh clone, taken after the tidy-up: 70 tests passed twice, the package built, the app
+  started, and an API smoke test passed, including the $80/$50 race 10 of 10 with exactly one approval.
 - **UI check in a real browser.** After the UI changes, every flow was clicked through in Chrome:
   create account, duplicate email, deposit, issue card, second card, an approved pharmacy purchase, a
   `NOT_QUALIFIED` restaurant purchase, an `INSUFFICIENT_FUNDS` overspend, a `CARD_INACTIVE` purchase on a
@@ -224,7 +229,9 @@ in the screenshots and fixed before that change was committed.
   `purchase_decision` log line.
 
 I can explain the core path in my own words. The card and the category are checked before any money
-moves, so a declined purchase never touches the balance or the account's row lock. The debit is a
+moves, so a purchase declined for its card or category never runs the debit `UPDATE`. An
+insufficient-funds decline does run it: the `UPDATE` changes nothing but briefly takes the account's
+row lock. The debit is a
 single conditional `UPDATE` because reading the balance first would let two purchases both see $100
 and both be approved, with one update silently lost. Against $100, exactly one of $80 and $50 wins
 because MySQL's row lock makes the second `UPDATE` re-check the new balance. Two safety nets sit behind

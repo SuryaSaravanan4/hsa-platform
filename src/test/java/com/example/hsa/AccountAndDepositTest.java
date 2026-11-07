@@ -3,6 +3,8 @@ package com.example.hsa;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -81,5 +83,19 @@ class AccountAndDepositTest {
         given().contentType(ContentType.JSON).body(Map.of())
                 .post("/api/accounts/{id}/deposits", id).then().statusCode(400);
         assertEquals(0, Api.balance(id));
+    }
+
+    /** Amounts are integer cents: fractions and numeric strings are rejected, never truncated or coerced. */
+    @ParameterizedTest
+    @ValueSource(strings = {"12.5", "2500.99", "\"100\""})
+    void nonIntegerDepositAmountsAre400(String rawAmount) {
+        long id = Api.createAccount();
+        given().contentType(ContentType.JSON).body("{\"amountCents\":" + rawAmount + "}")
+                .post("/api/accounts/{id}/deposits", id).then().statusCode(400);
+        assertEquals(0, Api.balance(id));
+        // A real integer still works.
+        given().contentType(ContentType.JSON).body("{\"amountCents\":1250}")
+                .post("/api/accounts/{id}/deposits", id).then().statusCode(201);
+        assertEquals(1_250, Api.balance(id));
     }
 }

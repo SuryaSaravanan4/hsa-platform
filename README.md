@@ -64,7 +64,7 @@ edited, so Flyway would reject the old schema's checksum.
 ./mvnw test
 ```
 
-70 tests run over HTTP against a real MySQL container (Dev Services), including the concurrency tests in
+76 tests run over HTTP against a real MySQL container (Dev Services), including the concurrency tests in
 `ConcurrentPurchaseTest` and `RaceConditionTest`. Docker must be running. A full run takes about 2 minutes.
 
 ## Demo: concurrent purchases
@@ -97,7 +97,10 @@ curl -s -X POST localhost:8080/api/cards/1/purchases -H 'Content-Type: applicati
 
 ## API
 
-All amounts are integer cents. Errors are JSON `{"code": "...", "message": "..."}`.
+All amounts are integer cents and must be sent as JSON integers: `12.5` or `"100"` is rejected with
+400, never rounded or converted. Business errors (404, 409) are JSON `{"code": "...", "message": "..."}`.
+Validation errors (400) use Quarkus's standard constraint-violation JSON, and a malformed body or a
+non-integer amount returns 400.
 
 | Method | Path | Body | Success |
 |---|---|---|---|
